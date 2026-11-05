@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#060914">
+<title>Laboratorio Cuántico NISQ · Hardware III</title>
+<style>
+  :root{
+    --bg:#060914;
+    --cyan:#38e1ff;
+    --violet:#a78bfa;
+    --gold:#f5c451;
+    --green:#3ddc97;
+    --red:#ff5f6d;
+    --txt:#e8f0ff;
+    --muted:#93a4c8;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:var(--txt);
+    font-size:16px;
+    line-height:1.55;
+    padding:0 0 150px;
+    -webkit-text-size-adjust:100%;
+    min-height:100vh;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;
+    background:
+      radial-gradient(600px 420px at 20% -5%, rgba(56,225,255,.16), transparent 65%),
+      radial-gradient(700px 500px at 110% 8%, rgba(167,139,250,.14), transparent 65%),
+      radial-gradient(500px 400px at 50% 108%, rgba(245,196,81,.08), transparent 65%),
+      #060914;
+  }
+  header{padding:22px 16px 10px;text-align:center}
+  h1{
+    font-size:1.32rem;margin:0 0 6px;font-weight:800;letter-spacing:.3px;
+    background:linear-gradient(90deg,#38e1ff,#a78bfa 55%,#f5c451);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .sub{margin:0;font-size:.78rem;color:var(--muted);letter-spacing:.3px}
+
+  /* ---------- Barra de progreso ---------- */
+  .progress-wrap{
+    position:sticky;top:0;z-index:40;
+    background:rgba(6,9,20,.86);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    padding:10px 14px 11px;
+    border-bottom:1px solid rgba(90,180,255,.16);
+  }
+  .track{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+  .fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#38e1ff,#a78bfa);transition:width .45s ease}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{font-size:.66rem;padding:4px 9px;border-radius:99px;border:1px solid rgba(255,255,255,.12);color:var(--muted);background:rgba(255,255,255,.03);transition:.25s}
+  .chip.done{color:#04120c;background:linear-gradient(90deg,#3ddc97,#38e1ff);border-color:transparent;font-weight:800}
+
+  /* ---------- Tarjetas ---------- */
+  main{max-width:720px;margin:0 auto;padding:16px 12px}
+  .card{
+    background:linear-gradient(180deg,rgba(17,28,58,.94),rgba(11,18,38,.94));
+    border:1px solid rgba(90,180,255,.16);
+    border-radius:18px;
+    padding:16px;
+    margin-bottom:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,.38);
+    scroll-margin-top:80px;
+  }
+  .card-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .num{
+    font-size:.72rem;font-weight:900;letter-spacing:1px;color:#060914;
+    background:linear-gradient(135deg,#38e1ff,#a78bfa);
+    border-radius:8px;padding:3px 8px;
+  }
+  .card h2{font-size:1.02rem;margin:0;font-weight:800}
+  .hint{font-size:.78rem;color:var(--muted);margin:0 0 12px}
+
+  /* ---------- Formularios ---------- */
+  .field{display:block;margin-bottom:13px}
+  .field>span{display:block;font-size:.78rem;color:var(--muted);margin-bottom:6px;font-weight:700;letter-spacing:.2px}
+  input[type=text],input[type=date],textarea{
+    width:100%;background:rgba(6,9,20,.78);
+    border:1px solid rgba(90,180,255,.22);
+    color:var(--txt);border-radius:12px;padding:13px 14px;
+    font-size:16px;font-family:inherit;outline:none;transition:.2s;
+  }
+  input:focus,textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,225,255,.15)}
+  textarea{resize:vertical;min-height:125px;line-height:1.5}
+  .field.invalid input,.field.invalid textarea{
+    border-color:var(--red);box-shadow:0 0 0 3px rgba(255,95,109,.16);
+    animation:shake .35s;
+  }
+  @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  .wc{font-size:.72rem;color:var(--muted);margin-top:6px;text-align:right;font-weight:700}
+  .wc.ok{color:var(--green)}
+  .wc.bad{color:#f5a623}
+
+  /* ---------- Botones ---------- */
+  .btn{
+    display:block;width:100%;min-height:52px;border-radius:14px;
+    border:1px solid rgba(90,180,255,.25);
+    background:rgba(255,255,255,.04);color:var(--txt);
+    font-size:1rem;font-weight:800;font-family:inherit;
+    cursor:pointer;padding:12px;transition:transform .1s,background .2s;
+  }
+  .btn:active{transform:scale(.972)}
+  .btn.primary{
+    background:linear-gradient(135deg,#38e1ff,#a78bfa);color:#04101f;border:none;
+    box-shadow:0 8px 24px rgba(56,225,255,.28);
+  }
+  .btn.ghost{background:transparent;color:var(--muted);border-color:rgba(255,255,255,.12);margin-top:10px;min-height:46px;font-size:.9rem}
+  .gates{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .gates .btn:nth-child(3){grid-column:1/-1}
+  .gate{background:rgba(56,225,255,.07);border-color:rgba(56,225,255,.35);font-size:.92rem}
+  .gate[data-gate="cnot"]{background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.42)}
+
+  /* ---------- Qubits ---------- */
+  .qubits{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0 14px}
+  .qcard{
+    background:radial-gradient(circle at 50% 0%,rgba(56,225,255,.13),transparent 70%),rgba(6,9,20,.62);
+    border:1px solid rgba(90,180,255,.2);border-radius:16px;
+    padding:14px 10px;text-align:center;transition:.35s;
+  }
+  .qcard.linked{
+    border-color:rgba(245,196,81,.55);
+    box-shadow:inset 0 0 24px rgba(245,196,81,.13),0 0 18px rgba(245,196,81,.12);
+  }
+  .qlabel{font-size:.68rem;color:var(--muted);font-weight:800;letter-spacing:.6px;margin-bottom:10px;text-transform:uppercase}
+  .coin{
+    width:76px;height:76px;margin:0 auto;border-radius:50%;
+    display:grid;place-items:center;
+    font-size:1.55rem;font-weight:900;color:#4a3400;
+    background:radial-gradient(circle at 32% 26%,#fff3c9,#f5c451 48%,#a97b12 100%);
+    box-shadow:inset 0 0 0 3px rgba(255,255,255,.2),0 0 18px rgba(245,196,81,.3);
+    transform-style:preserve-3d;transition:.25s;
+  }
+  .coin.spin{animation:coinspin 1.05s linear infinite}
+  @keyframes coinspin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+  .coin.measured{animation:pop .45s}
+  @keyframes pop{0%{transform:scale(.82)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+  .qstate{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.8rem;margin-top:10px;color:var(--cyan);min-height:2.5em;word-break:break-word}
+  .pbar{height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:8px}
+  .pfill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#38e1ff,#a78bfa);transition:width .45s}
+  .ptext{font-size:.64rem;color:var(--muted);margin-top:5px}
+
+  /* ---------- Histograma ---------- */
+  .hist{margin-top:14px}
+  .hbar{display:grid;grid-template-columns:52px 1fr 80px;align-items:center;gap:8px;margin-bottom:8px}
+  .hlabel{font-family:ui-monospace,monospace;font-size:.82rem;color:var(--violet);font-weight:700}
+  .htrack{height:22px;border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden}
+  .hfill{height:100%;width:0;border-radius:8px;background:linear-gradient(90deg,#38e1ff,#a78bfa);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+  .hval{font-size:.68rem;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+  .hint-empty{font-size:.78rem;color:var(--muted);text-align:center;padding:10px 0}
+
+  /* ---------- Resultado / colapso ---------- */
+  .result{
+    margin-top:12px;border:1px dashed rgba(245,196,81,.5);border-radius:14px;
+    padding:12px;text-align:center;background:rgba(245,196,81,.06);
+  }
+  .result .ket{font-family:ui-monospace,monospace;font-size:1.7rem;font-weight:900;color:var(--gold)}
+  .result small{display:block;color:var(--muted);font-size:.72rem;margin-top:5px;line-height:1.4}
+  .hidden{display:none !important}
+
+  /* ---------- Avisos del simulador ---------- */
+  .sim-msg{
+    display:none;margin:10px 0 0;padding:10px 12px;border-radius:12px;
+    font-size:.78rem;line-height:1.45;
+    background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.45);color:#ffd58a;
+  }
+  .sim-msg.show{display:block;animation:pop .35s}
+
+  /* ---------- Log ---------- */
+  .log{
+    margin-top:14px;font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:.68rem;color:#6f80a5;max-height:112px;overflow:auto;
+    border-top:1px solid rgba(255,255,255,.08);padding-top:8px;
+  }
+  .log div{padding:2px 0}
+
+  /* ---------- Criogenia ---------- */
+  .cryo{display:flex;flex-direction:column;gap:8px;margin:6px 0 14px}
+  .stage{
+    display:flex;justify-content:space-between;gap:10px;align-items:center;
+    padding:11px 13px;border-radius:12px;
+    background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+  }
+  .stage b{font-family:ui-monospace,monospace;font-size:.9rem;color:var(--cyan);min-width:60px}
+  .stage span{font-size:.72rem;color:var(--muted);text-align:right}
+  .stage.core{
+    border-color:rgba(56,225,255,.5);
+    background:linear-gradient(90deg,rgba(56,225,255,.14),rgba(167,139,250,.12));
+    box-shadow:0 0 24px rgba(56,225,255,.14);
+  }
+  .stage.core b{color:#7ff0ff}
+  input[type=range]{width:100%;height:36px;accent-color:#38e1ff;background:transparent}
+
+  /* ---------- Barra de descarga ---------- */
+  .dlbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:50;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+    background:rgba(6,9,20,.93);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-top:1px solid rgba(90,180,255,.2);
+  }
+  .dlbar .btn{max-width:720px;margin:0 auto}
+  .dlmsg{
+    display:none;max-width:720px;margin:0 auto 8px;font-size:.76rem;
+    text-align:center;padding:8px 10px;border-radius:10px;line-height:1.4;
+    max-height:96px;overflow:auto;
+  }
+  .dlmsg.show{display:block;animation:pop .3s}
+  .dlmsg.err{background:rgba(255,95,109,.13);border:1px solid rgba(255,95,109,.55);color:#ffb8bd}
+  .dlmsg.ok{background:rgba(61,220,151,.13);border:1px solid rgba(61,220,151,.5);color:#9ff5cf}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Laboratorio Cuántico · Era NISQ</h1>
+  <p class="sub">Hardware III · Registro de qubits, compuertas y marco criogénico</p>
+</header>
+
+<div class="progress-wrap">
+  <div class="track"><div class="fill" id="prog-fill"></div></div>
+  <div class="chips" id="chips">
+    <span class="chip" data-k="datos">Datos</span>
+    <span class="chip" data-k="h">Compuerta H</span>
+    <span class="chip" data-k="cnot">Entrelazamiento</span>
+    <span class="chip" data-k="med">Medición</span>
+    <span class="chip" data-k="texto">Informe escrito</span>
+  </div>
+</div>
+
+<main>
+
+  <!-- ================= MÓDULO 1 ================= -->
+  <section class="card" id="card-1">
+    <div class="card-head"><span class="num">01</span><h2>Identificación del Alumno</h2></div>
+    <p class="hint">Todos los campos son obligatorios para poder generar el informe.</p>
+
+    <label class="field">
+      <span>Nombre completo *</span>
+      <input type="text" id="inp-name" placeholder="Ej: Ana Gómez" autocomplete="name">
+    </label>
+
+    <label class="field">
+      <span>Curso / División *</span>
+      <input type="text" id="inp-course" placeholder="Ej: 6° Año Técnico · Turno Mañana">
+    </label>
+
+    <label class="field">
+      <span>Materia *</span>
+      <input type="text" id="inp-subject" value="Hardware III">
+    </label>
+
+    <label class="field">
+      <span>Fecha *</span>
+      <input type="date" id="inp-date">
+    </label>
+  </section>
+
+  <!-- ================= MÓDULO 2 ================= -->
+  <section class="card" id="card-2">
+    <div class="card-head"><span class="num">02</span><h2>Simulador de Registro y Compuertas</h2></div>
+    <p class="hint">Registro de 2 qubits inicializado en |00⟩. Aplica compuertas, entrelaza y mide.</p>
+
+    <div class="qubits">
+      <div class="qcard" id="qcard-0">
+        <div class="qlabel">Qubit 0 · control</div>
+        <div class="coin" id="coin-0">0</div>
+        <div class="qstate" id="qstate-0">|0⟩</div>
+        <div class="pbar"><div class="pfill" id="pfill-0"></div></div>
+        <div class="ptext" id="ptext-0">P(0)=100% · P(1)=0%</div>
+      </div>
+      <div class="qcard" id="qcard-1">
+        <div class="qlabel">Qubit 1 · objetivo</div>
+        <div class="coin" id="coin-1">0</div>
+        <div class="qstate" id="qstate-1">|0⟩</div>
+        <div class="pbar"><div class="pfill" id="pfill-1"></div></div>
+        <div class="ptext" id="ptext-1">P(0)=100% · P(1)=0%</div>
+      </div>
+    </div>
+
+    <div class="gates">
+      <button class="btn gate" data-gate="h0">H · Qubit 0</button>
+      <button class="btn gate" data-gate="h1">H · Qubit 1</button>
+      <button class="btn gate" data-gate="cnot">CNOT · Q0 → Q1</button>
+    </div>
+
+    <button class="btn primary" id="btn-measure">⚡ Medir (colapsar estado) · 200 shots</button>
+    <button class="btn ghost" id="btn-reset">↺ Reiniciar registro a |00⟩</button>
+
+    <div class="sim-msg" id="sim-msg"></div>
+
+    <div class="result hidden" id="result-box"></div>
+
+    <div class="hist" id="hist">
+      <p class="hint-empty">Aún no hay mediciones. Aplica compuertas y pulsa «Medir».</p>
+    </div>
+
+    <div class="log" id="log"></div>
+  </section>
+
+  <!-- ================= MÓDULO 3 ================= -->
+  <section class="card" id="card-3">
+    <div class="card-head"><span class="num">03</span><h2>Marco Criogénico y Hardware NISQ</h2></div>
+    <p class="hint">Un qubit superconductor solo mantiene su coherencia a temperaturas cercanas al cero absoluto.</p>
+
+    <div class="cryo">
+      <div class="stage"><b>300 K</b><span>Entorno exterior · electrónica clásica de control</span></div>
+      <div class="stage"><b>50 K</b><span>Blindaje · criocooler de ciclo cerrado</span></div>
+      <div class="stage"><b>4 K</b><span>Helio líquido · anclaje térmico del cableado</span></div>
+      <div class="stage core"><b>15 mK</b><span>Núcleo cuántico · pares de Cooper coherentes</span></div>
+    </div>
+
+    <label class="field">
+      <span>Nivel de ruido / decoherencia: <b id="noise-val" style="color:var(--cyan)">5%</b></span>
+      <input type="range" id="noise" min="0" max="50" step="1" value="5">
+    </label>
+    <p class="hint" id="noise-hint">Ruido bajo · Los resultados muestran pequeñas impurezas, típico de un procesador NISQ bien calibrado.</p>
+  </section>
+
+  <!-- ================= MÓDULO 4 ================= -->
+  <section class="card" id="card-4">
+    <div class="card-head"><span class="num">04</span><h2>Informe Teórico y Redacción Técnica</h2></div>
+    <p class="hint">Cada respuesta debe tener un mínimo de <b>20 palabras</b>. El contador se actualiza en tiempo real.</p>
+
+    <label class="field">
+      <span>Pregunta 1 · Bit clásico determinista vs. qubit en superposición probabilística *</span>
+      <textarea id="ans1" placeholder="Explica la diferencia entre un bit clásico que solo puede ser 0 o 1 y un qubit que puede encontrarse en una combinación dinámica de probabilidades..."></textarea>
+      <div class="wc bad" id="wc1">0 / 20 palabras mínimas</div>
+    </label>
+
+    <label class="field">
+      <span>Pregunta 2 · Importancia del andamiaje criogénico (15 mK) y del ruido en la Era NISQ *</span>
+      <textarea id="ans2" placeholder="Describe por qué se requiere un entorno a 15 mK y cómo la decoherencia afecta a los procesadores NISQ actuales..."></textarea>
+      <div class="wc bad" id="wc2">0 / 20 palabras mínimas</div>
+    </label>
+  </section>
+
+</main>
+
+<div class="dlbar">
+  <div class="dlmsg" id="dlmsg"></div>
+  <button class="btn primary" id="btn-download">⬇ Descargar Informe .doc</button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     UTILIDADES
+     ========================================================= */
+  const $  = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  const countWords = (t) => {
+    const s = (t || "").trim();
+    if (!s) return 0;
+    return s.split(/\s+/).filter(w => w.length > 0).length;
+  };
+
+  const escapeHtml = (s) => String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  const fmtDate = (iso) => {
+    if (!iso) return "—";
+    const p = iso.split("-");
+    if (p.length !== 3) return iso;
+    return p[2] + "/" + p[1] + "/" + p[0];
+  };
+
+  /* =========================================================
+     ESTADO GLOBAL
+     ========================================================= */
+  const state = {
+    name: "",
+    course: "",
+    subject: "Hardware III",
+    date: "",
+    qubits: [{ sup: false }, { sup: false }],
+    entangled: false,
+    hCount: 0,
+    cnotCount: 0,
+    measureCount: 0,
+    noise: 5,
+    hist: null,
+    shots: 0,
+    collapse: null,
+    log: []
+  };
+
+  /* =========================================================
+     INICIALIZACIÓN
+     ========================================================= */
+  function initDate() {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    const iso = local.toISOString().slice(0, 10);
+    $("#inp-date").value = iso;
+    state.date = iso;
+  }
+
+  /* =========================================================
+     MÓDULO 1 · DATOS DEL ALUMNO
+     ========================================================= */
+  function bindStudentInputs() {
+    const bind = (sel, key) => {
+      const el = $(sel);
+      el.addEventListener("input", () => {
+        state[key] = el.value;
+        el.closest(".field").classList.remove("invalid");
+        renderProgress();
+      });
+      el.addEventListener("change", () => {
+        state[key] = el.value;
+        el.closest(".field").classList.remove("invalid");
+        renderProgress();
+      });
+    };
+    bind("#inp-name", "name");
+    bind("#inp-course", "course");
+    bind("#inp-subject", "subject");
+    bind("#inp-date", "date");
+  }
+
+  /* =========================================================
+     MÓDULO 2 · SIMULADOR CUÁNTICO
+     ========================================================= */
+  function pushLog(msg) {
+    state.log.unshift(msg);
+    if (state.log.length > 8) state.log.pop();
+    $("#log").innerHTML = state.log.map(m => "<div>› " + escapeHtml(m) + "</div>").join("");
+  }
+
+  let warnTimer = null;
+  function flashWarn(txt) {
+    const el = $("#sim-msg");
+    el.textContent = "⚠ " + txt;
+    el.classList.add("show");
+    clearTimeout(warnTimer);
+    warnTimer = setTimeout(() => el.classList.remove("show"), 4800);
+  }
+
+  function clearWarn() {
+    $("#sim-msg").classList.remove("show");
+    clearTimeout(warnTimer);
+  }
+
+  function renderQubits() {
+    const ent = state.entangled;
+
+    state.qubits.forEach((q, i) => {
+      const coin = $("#coin-" + i);
+      const st   = $("#qstate-" + i);
+      const pf   = $("#pfill-" + i);
+      const pt   = $("#ptext-" + i);
+
+      coin.classList.remove("spin");
+      coin.textContent = "0";
+
+      if (ent) {
+        coin.classList.add("spin");
+        coin.textContent = "?";
+        if (i === 0) {
+          st.textContent = "(|00⟩ + |11⟩)/√2";
+        } else {
+          st.textContent = "ligado a Q0";
+        }
+        pf.style.width = "50%";
+        pt.textContent = "P(0)=50% · P(1)=50%";
+      } else if (q.sup) {
+        coin.classList.add("spin");
+        coin.textContent = "?";
+        st.textContent = "(|0⟩ + |1⟩)/√2";
+        pf.style.width = "50%";
+        pt.textContent = "P(0)=50% · P(1)=50%";
+      } else {
+        st.textContent = "|0⟩";
+        pf.style.width = "0%";
+        pt.textContent = "P(0)=100% · P(1)=0%";
+      }
+    });
+
+    $("#qcard-0").classList.toggle("linked", ent);
+    $("#qcard-1").classList.toggle("linked", ent);
+  }
+
+  function applyH(index) {
+    clearWarn();
+    state.qubits[index].sup = true;
+    state.hCount++;
+    if (state.entangled) {
+      state.entangled = false;
+      pushLog("H en Q" + index + " · se reinicia el entrelazamiento");
+    } else {
+      pushLog("H aplicada al Qubit " + index + " → superposición (α|0⟩ + β|1⟩)");
+    }
+    renderQubits();
+    renderProgress();
+  }
+
+  function applyCNOT() {
+    clearWarn();
+
+    if (!state.qubits[0].sup) {
+      pushLog("⚠ CNOT ignorado: el control (Q0) no está en superposición.");
+      flashWarn("El Qubit 0 (control) está en |0⟩. Aplica primero la compuerta H al Qubit 0 para ponerlo en superposición.");
+      return;
+    }
+    if (state.qubits[1].sup) {
+      pushLog("⚠ CNOT ignorado: el objetivo (Q1) debe estar en |0⟩.");
+      flashWarn("El Qubit 1 (objetivo) ya está en superposición. Pulsa «Reiniciar registro» y repite la secuencia H → CNOT.");
+      return;
+    }
+
+    state.entangled = true;
+    state.cnotCount++;
+    pushLog("CNOT Q0→Q1 · qubits entrelazados · (|00⟩ + |11⟩)/√2");
+    renderQubits();
+    renderProgress();
+  }
+
+  /* Muestreo de un shot individual (200 shots por medición) */
+  function sampleShot() {
+    let b0 = 0, b1 = 0;
+
+    if (state.entangled) {
+      const r = Math.random() < 0.5 ? 0 : 1;
+      b0 = r; b1 = r;
+    } else {
+      if (state.qubits[0].sup) b0 = Math.random() < 0.5 ? 1 : 0;
+      if (state.qubits[1].sup) b1 = Math.random() < 0.5 ? 1 : 0;
+    }
+
+    /* Decoherencia: con probabilidad p se invierte un bit al azar */
+    const p = state.noise / 100;
+    if (Math.random() < p) {
+      if (Math.random() < 0.5) b0 ^= 1;
+      else b1 ^= 1;
+    }
+
+    return "" + b0 + b1;
+  }
+
+  function measure() {
+    clearWarn();
+
+    const N = 200;
+    const hist = { "00": 0, "01": 0, "10": 0, "11": 0 };
+    let last = "00";
+
+    for (let i = 0; i < N; i++) {
+      const r = sampleShot();
+      hist[r]++;
+      last = r;
+    }
+
+    state.hist = hist;
+    state.shots = N;
+    state.collapse = last;
+    state.measureCount++;
+
+    renderHistogram();
+    renderCollapse();
+    renderProgress();
+
+    pushLog("Medición · " + N + " shots · colapso final |" + last + "⟩");
+
+    /* Pequeño feedback visual en las monedas */
+    $$(".coin").forEach(c => {
+      c.classList.add("measured");
+      setTimeout(() => c.classList.remove("measured"), 500);
+    });
+
+    setTimeout(() => {
+      const box = $("#result-box");
+      if (box) box.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 180);
+  }
+
+  function renderHistogram() {
+    const box = $("#hist");
+    box.innerHTML = "";
+
+    if (!state.hist) {
+      box.innerHTML = '<p class="hint-empty">Aún no hay mediciones. Aplica compuertas y pulsa «Medir».</p>';
+      return;
+    }
+
+    ["00", "01", "10", "11"].forEach(k => {
+      const c = state.hist[k];
+      const pct = state.shots ? (c / state.shots) * 100 : 0;
+
+      const row = document.createElement("div");
+      row.className = "hbar";
+      row.innerHTML =
+        '<span class="hlabel">|' + k + '⟩</span>' +
+        '<div class="htrack"><div class="hfill" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+        '<span class="hval">' + c + ' · ' + pct.toFixed(0) + '%</span>';
+      box.appendChild(row);
+    });
+  }
+
+  function renderCollapse() {
+    const box = $("#result-box");
+    if (!state.collapse) {
+      box.classList.add("hidden");
+      return;
+    }
+    box.classList.remove("hidden");
+    box.innerHTML =
+      '<div class="ket">|' + state.collapse + '⟩</div>' +
+      '<small>Colapso del último shot: la superposición desaparece y el registro pasa a un estado clásico irreversible.</small>';
+  }
+
+  function resetRegister() {
+    clearWarn();
+    state.qubits = [{ sup: false }, { sup: false }];
+    state.entangled = false;
+    state.hist = null;
+    state.shots = 0;
+    state.collapse = null;
+
+    renderQubits();
+    renderHistogram();
+    $("#result-box").classList.add("hidden");
+    pushLog("Registro reiniciado a |00⟩");
+    renderProgress();
+  }
+
+  function bindSimulator() {
+    $$("[data-gate]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const g = btn.dataset.gate;
+        if (g === "h0") applyH(0);
+        else if (g === "h1") applyH(1);
+        else if (g === "cnot") applyCNOT();
+      });
+    });
+
+    $("#btn-measure").addEventListener("click", measure);
+    $("#btn-reset").addEventListener("click", resetRegister);
+  }
+
+  /* =========================================================
+     MÓDULO 3 · RUIDO
+     ========================================================= */
+  function bindNoise() {
+    const slider = $("#noise");
+    slider.addEventListener("input", () => {
+      state.noise = Number(slider.value);
+      $("#noise-val").textContent = state.noise + "%";
+
+      const hint = $("#noise-hint");
+      if (state.noise === 0) {
+        hint.textContent = "0% · Simulación ideal sin ruido: resultados perfectamente coherentes.";
+      } else if (state.noise <= 10) {
+        hint.textContent = "Ruido bajo · Pequeñas impurezas en el histograma, típico de un procesador NISQ bien calibrado.";
+      } else if (state.noise <= 25) {
+        hint.textContent = "Ruido medio · La decoherencia degrada la fidelidad y aparecen estados no deseados.";
+      } else {
+        hint.textContent = "Ruido alto · Decoherencia severa: la información cuántica se pierde en microsegundos.";
+      }
+    });
+  }
+
+  /* =========================================================
+     MÓDULO 4 · CONTADOR DE PALABRAS
+     ========================================================= */
+  function updateWordCount(areaId, counterId) {
+    const n = countWords($(areaId).value);
+    const el = $(counterId);
+    el.textContent = n + " / 20 palabras mínimas";
+    el.classList.toggle("ok", n >= 20);
+    el.classList.toggle("bad", n < 20);
+    renderProgress();
+  }
+
+  function bindTextareas() {
+    $("#ans1").addEventListener("input", () => {
+      $("#ans1").closest(".field").classList.remove("invalid");
+      updateWordCount("#ans1", "#wc1");
+    });
+    $("#ans2").addEventListener("input", () => {
+      $("#ans2").closest(".field").classList.remove("invalid");
+      updateWordCount("#ans2", "#wc2");
+    });
+  }
+
+  /* =========================================================
+     PROGRESO Y VALIDACIÓN
+     ========================================================= */
+  function getChecks() {
+    return {
+      datos: !!(state.name.trim() && state.course.trim() && state.subject.trim() && state.date),
+      h: state.hCount > 0,
+      cnot: state.cnotCount > 0,
+      med: state.measureCount > 0,
+      texto: countWords($("#ans1").value) >= 20 && countWords($("#ans2").value) >= 20
+    };
+  }
+
+  function renderProgress() {
+    const c = getChecks();
+    const keys = Object.keys(c);
+    const done = keys.filter(k => c[k]).length;
+
+    $("#prog-fill").style.width = ((done / keys.length) * 100) + "%";
+
+    $$("#chips .chip").forEach(chip => {
+      chip.classList.toggle("done", !!c[chip.dataset.k]);
+    });
+  }
+
+  function validateAll() {
+    /* Limpieza de marcas previas */
+    $$(".field.invalid").forEach(f => f.classList.remove("invalid"));
+
+    const errors = [];
+
+    const markField = (sel, msg) => {
+      const f = $(sel).closest(".field");
+      if (f) f.classList.add("invalid");
+      errors.push({ sel: sel, msg: msg });
+    };
+
+    if (!state.name.trim())    markField("#inp-name",    "• Nombre completo obligatorio.");
+    if (!state.course.trim())  markField("#inp-course",  "• Curso obligatorio.");
+    if (!state.subject.trim()) markField("#inp-subject", "• Materia obligatoria.");
+    if (!state.date)           markField("#inp-date",    "• Fecha obligatoria.");
+
+    if (state.hCount < 1)
+      errors.push({ sel: "#card-2", msg: "• Debes aplicar al menos una compuerta H (Hadamard)." });
+    if (state.cnotCount < 1)
+      errors.push({ sel: "#card-2", msg: "• Debes configurar el entrelazamiento aplicando CNOT." });
+    if (state.measureCount < 1)
+      errors.push({ sel: "#card-2", msg: "• Debes realizar al menos una medición (200 shots)." });
+
+    if (countWords($("#ans1").value) < 20)
+      markField("#ans1", "• Respuesta 1: mínimo 20 palabras.");
+    if (countWords($("#ans2").value) < 20)
+      markField("#ans2", "• Respuesta 2: mínimo 20 palabras.");
+
+    return errors;
+  }
+
+  /* =========================================================
+     EXPORTACIÓN A .DOC (Word / Google Docs)
+     ========================================================= */
+  function sanitizeFilename(name) {
+    return String(name)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 60) || "Alumno";
+  }
+
+  function buildDocHtml() {
+    const hist = state.hist || { "00": 0, "01": 0, "10": 0, "11": 0 };
+    const total = state.shots || 0;
+
+    const histRows = ["00", "01", "10", "11"].map(k => {
+      const c = hist[k];
+      const pct = total ? ((c / total) * 100).toFixed(1) : "0.0";
+      return "<tr>" +
+        '<td style="border:1px solid #9bb3d4;padding:6pt;text-align:center;font-family:Consolas,monospace">|' + k + "⟩</td>" +
+        '<td style="border:1px solid #9bb3d4;padding:6pt;text-align:center">' + c + "</td>" +
+        '<td style="border:1px solid #9bb3d4;padding:6pt;text-align:center">' + pct + "%</td>" +
+        "</tr>";
+    }).join("");
+
+    const a1 = escapeHtml($("#ans1").value.trim()).replace(/\n/g, "<br>");
+    const a2 = escapeHtml($("#ans2").value.trim()).replace(/\n/g, "<br>");
+
+    const entrelazado = state.cnotCount > 0 ? "Sí (CNOT aplicado)" : "No";
+    const colapso = state.collapse ? "|" + state.collapse + "⟩" : "—";
+
+    return "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
+      "xmlns:w='urn:schemas-microsoft-com:office:word' " +
+      "xmlns='http://www.w3.org/TR/REC-html40'>" +
+      "<head><meta charset='utf-8'>" +
+      "<title>Informe Laboratorio Cuántico NISQ</title>" +
+      "<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom>" +
+      "<w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->" +
+      "<style>" +
+      "@page{size:A4;margin:2cm}" +
+      "body{font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#111;line-height:1.5}" +
+      "h1{font-size:19pt;color:#12305e;margin:0 0 3pt}" +
+      "h2{font-size:13pt;color:#12305e;border-bottom:1.5pt solid #38a3d1;padding-bottom:3pt;margin:18pt 0 8pt}" +
+      "p{margin:6pt 0}" +
+      "table{border-collapse:collapse;width:100%;margin:6pt 0}" +
+      "th,td{border:1px solid #9bb3d4;padding:6pt;font-size:10.5pt;text-align:left;vertical-align:top}" +
+      "th{background:#e8f1fa;color:#12305e}" +
+      ".k{font-weight:bold;color:#12305e}" +
+      ".small{font-size:9pt;color:#555}" +
+      ".foot{margin-top:22pt;border-top:1px solid #c8d6e8;padding-top:8pt;font-size:9pt;color:#555}" +
+      "</style></head><body>" +
+
+      "<h1>Informe de Laboratorio · Procesadores Cuánticos Actuales</h1>" +
+      "<p class='small'>Era NISQ (Noisy Intermediate-Scale Quantum) · Simulación de registro, compuertas y marco criogénico</p>" +
+
+      "<h2>1. Datos del alumno</h2>" +
+      "<table>" +
+      "<tr><th style='width:30%'>Nombre completo</th><td>" + escapeHtml(state.name) + "</td></tr>" +
+      "<tr><th>Curso / División</th><td>" + escapeHtml(state.course) + "</td></tr>" +
+      "<tr><th>Materia</th><td>" + escapeHtml(state.subject) + "</td></tr>" +
+      "<tr><th>Fecha</th><td>" + fmtDate(state.date) + "</td></tr>" +
+      "</table>" +
+
+      "<h2>2. Resultados del simulador cuántico</h2>" +
+      "<table>" +
+      "<tr><th style='width:45%'>Parámetro registrado</th><th>Valor</th></tr>" +
+      "<tr><td>Compuertas H aplicadas</td><td>" + state.hCount + "</td></tr>" +
+      "<tr><td>Compuertas CNOT aplicadas</td><td>" + state.cnotCount + "</td></tr>" +
+      "<tr><td>Entrelazamiento configurado</td><td>" + entrelazado + "</td></tr>" +
+      "<tr><td>Mediciones realizadas</td><td>" + state.measureCount + "</td></tr>" +
+      "<tr><td>Shots por medición</td><td>" + total + "</td></tr>" +
+      "<tr><td>Nivel de ruido / decoherencia</td><td>" + state.noise + " %</td></tr>" +
+      "<tr><td>Temperatura operativa del núcleo</td><td>15 mK (−273,135 °C)</td></tr>" +
+      "<tr><td>Estado colapsado del último shot</td><td>" + colapso + "</td></tr>" +
+      "</table>" +
+
+      "<p class='k'>Histograma de medición (distribución de estados base):</p>" +
+      "<table>" +
+      "<tr><th style='text-align:center'>Estado</th><th style='text-align:center'>Conteo</th><th style='text-align:center'>Porcentaje</th></tr>" +
+      histRows +
+      "</table>" +
+
+      "<h2>3. Marco criogénico y hardware NISQ</h2>" +
+      "<p>Para que un qubit superconductor mantenga su superposición sin colapsar por interferencia externa " +
+      "(decoherencia), se requiere un andamiaje térmico de cuatro etapas: 300 K en el entorno exterior, 50 K en el " +
+      "primer blindaje criogénico, 4 K en el anclaje térmico con helio líquido y 15 mK en el núcleo cuántico, donde los " +
+      "pares de Cooper y las uniones Josephson alcanzan la coherencia necesaria para el procesamiento.</p>" +
+
+      "<h2>4. Respuestas teóricas del alumno</h2>" +
+      "<p class='k'>Pregunta 1 · Diferencia entre el bit clásico determinista y el qubit en superposición probabilística:</p>" +
+      "<p>" + a1 + "</p>" +
+      "<p class='k'>Pregunta 2 · Importancia del andamiaje criogénico (15 mK) y del ruido/decoherencia en la Era NISQ:</p>" +
+      "<p>" + a2 + "</p>" +
+
+      "<div class='foot'>Documento generado automáticamente por el Laboratorio Simulado de Procesadores Cuánticos · " +
+      escapeHtml(state.subject) + " · " + fmtDate(state.date) + "</div>" +
+
+      "</body></html>";
+  }
+
+  function downloadDoc() {
+    const html = buildDocHtml();
+    const blob = new Blob(["\ufeff", html], { type: "application/msword" });
+    const filename = "Informe_Hardware_III_Cuantica_" + sanitizeFilename(state.name) + ".doc";
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 2000);
+  }
+
+  function bindDownload() {
+    $("#btn-download").addEventListener("click", () => {
+      const errors = validateAll();
+      const msg = $("#dlmsg");
+
+      if (errors.length > 0) {
+        msg.className = "dlmsg show err";
+        const shown = errors.slice(0, 3).map(e => e.msg).join("<br>");
+        const extra = errors.length > 3 ? "<br>…y " + (errors.length - 3) + " ítem(s) más." : "";
+        msg.innerHTML = "<b>⚠ Informe incompleto — descarga bloqueada</b><br>" + shown + extra;
+
+        const first = errors[0];
+        const target = first && first.sel ? document.querySelector(first.sel) : null;
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        renderProgress();
+        return;
+      }
+
+      msg.className = "dlmsg show ok";
+      msg.innerHTML = "✓ Validación correcta. Generando archivo <b>.doc</b>…";
+
+      downloadDoc();
+
+      setTimeout(() => {
+        msg.className = "dlmsg";
+        msg.innerHTML = "";
+      }, 4500);
+    });
+  }
+
+  /* =========================================================
+     ARRANQUE
+     ========================================================= */
+  function boot() {
+    initDate();
+    bindStudentInputs();
+    bindSimulator();
+    bindNoise();
+    bindTextareas();
+    bindDownload();
+
+    renderQubits();
+    renderHistogram();
+    renderProgress();
+    pushLog("Sistema inicializado · registro de 2 qubits en |00⟩");
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
+})();
+</script>
+</body>
+</html>
